@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vue Shopping List</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .done { text-decoration: line-through; color: #777; }
+    .priority { font-weight: bold; }
+    .row { margin: 10px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input[type="text"] { padding: 8px; min-width: 240px; }
+    button { padding: 8px 12px; cursor: pointer; }
+    ul { padding-left: 18px; }
+    li { margin: 8px 0; }
+    .meta { margin-top: 12px; color: #444; }
+  </style>
+</head>
+<body>
+  <div id="shopping-list">
+    <h1>{{ header }}</h1>
+
+    <div class="row">
+      <input
+        v-model.trim="newItem"
+        type="text"
+        placeholder="Add an item"
+        @keyup.enter="addItem"
+      />
+
+      <label>
+        <input type="checkbox" v-model="newItemHighPriority" />
+        High Priority
+      </label>
+
+      <button @click="addItem" :disabled="newItem.length === 0">
+        Add
+      </button>
+    </div>
+
+    <p v-if="items.length === 0">No items yet.</p>
+
+    <ul v-else>
+      <shopping-item
+        v-for="item in filteredItems"
+        :key="item.id"
+        :item="item"
+        @toggle="toggleBought"
+        @remove="removeItem"
+      ></shopping-item>
+    </ul>
+
+    <div class="row" v-if="items.length">
+      <label>
+        <input type="checkbox" v-model="hideBought" />
+        Hide bought items
+      </label>
+
+      <button @click="clearBought" :disabled="boughtCount === 0">
+        Clear bought ({{ boughtCount }})
+      </button>
+    </div>
+
+    <div class="meta" v-if="items.length">
+      Total: <strong>{{ items.length }}</strong> |
+      Remaining: <strong>{{ remainingCount }}</strong>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    const ShoppingItem = {
+      name: "ShoppingItem",
+      props: {
+        item: { type: Object, required: true }
+      },
+      emits: ["toggle", "remove"],
+      computed: {
+        itemClasses() {
+          return {
+            done: this.item.bought,
+            priority: this.item.highPriority && !this.item.bought
+          };
+        }
+      },
+      template: `
+        <li>
+          <span
+            :class="itemClasses"
+            @click="$emit('toggle', item.id)"
+            style="cursor:pointer"
+          >
+            {{ item.name }}
+            <span v-if="item.highPriority && !item.bought"> (high)</span>
+          </span>
+
+          <button @click="$emit('remove', item.id)" style="margin-left:10px">
+            Remove
+          </button>
+        </li>
+      `
+    };
+
+    const app = Vue.createApp({
+      components: { ShoppingItem },
+
+      data() {
+        return {
+          header: "Shopping List",
+          newItem: "",
+          newItemHighPriority: false,
+          hideBought: false,
+          nextId: 3,
+          items: [
+            { id: 1, name: "Milk", bought: false, highPriority: false },
+            { id: 2, name: "Eggs", bought: true, highPriority: true }
+          ]
+        };
+      },
+
+      computed: {
+        boughtCount() {
+          return this.items.filter(i => i.bought).length;
+        },
+        remainingCount() {
+          return this.items.filter(i => !i.bought).length;
+        },
+        filteredItems() {
+          return this.hideBought
+            ? this.items.filter(i => !i.bought)
+            : this.items;
+        }
+      },
+
+      methods: {
+        addItem() {
+          if (this.newItem.length === 0) return;
+
+          this.items.push({
+            id: this.nextId++,
+            name: this.newItem,
+            bought: false,
+            highPriority: this.newItemHighPriority
+          });
+
+          this.newItem = "";
+          this.newItemHighPriority = false;
+        },
+
+        toggleBought(id) {
+          const item = this.items.find(i => i.id === id);
+          if (item) item.bought = !item.bought;
+        },
+
+        removeItem(id) {
+          this.items = this.items.filter(i => i.id !== id);
+        },
+
+        clearBought() {
+          this.items = this.items.filter(i => !i.bought);
+        }
+      }
+    });
+
+    app.mount("#shopping-list");
+  </script>
+</body>
+</html>
